@@ -1,0 +1,5 @@
+Tool,Avg ATT (%),Bias (pct pts),Coverage,FNR,FPR,Avg CI Width (daily level)
+CausalPy (y_hat),6.50,-1.00,80.30%,66.20%,19.80% (avg lift: -0.90%),749.10
+Google MM,9.51,+2.01,83.10%,57.10%,16.90% (avg lift: +2.01%),833.48
+Meta GeoLift,7.72,+0.22,92.20%,91.30%,4.60% (avg lift: +0.22%),2020.07
+CausalImpact,11.32,+3.82,72.20%,37.90%,27.80% (avg lift: +3.82%),694.26

@@ -1,0 +1,71 @@
+# OS
+.DS_Store
+Thumbs.db
+.tmp.driveupload/
+
+# Node
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+
+# R
+.Rhistory
+.RData
+.Rproj.user/
+renv/
+
+# Docs — internal working files; published reports live in Google Docs
+docs/
+
+# Quarto build artifacts
+**/*.quarto_ipynb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Project-specific
+old-dont-use/
+next-steps.md
+results/checkpoint.db
+diagnostics/
+
+# Panels — 453 MB, reproducible via `make panels`
+/panels/
+
+# Backup result files
+results/raw/results_pre_*
+
+# Unused analysis scripts and audit docs
+analysis/reliability_heatmap.py
+analysis/plot_ci_gallery.R
+analysis/plot_coverage_options.py
+analysis/plot_coverage_scatter.py
+analysis/consolidate_results.py
+analysis/verify_claims.py
+analysis/audit_code_vs_article.md
+analysis/audit_interpretations.md
+
+# Unused figures (not referenced in the article)
+figures/att_distributions.png
+figures/ci_gallery_r.png
+figures/ci_width_comparison.png
+figures/coverage_forest_plot.png
+figures/coverage_vs_ciwidth_faceted.png
+figures/option1_coverage_vs_ciwidth.png
+figures/option2_paired_dot.png
+figures/option3_heatmap_upgraded.png
+figures/option4_lollipop_coverage.png
+figures/reliability_heatmap.png
+
+# Test and log artifacts
+.pytest_cache/
+*.log

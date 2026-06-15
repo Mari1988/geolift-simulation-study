@@ -1,0 +1,58 @@
+# Tool configurations for geo-simulation-v2
+# Equalized comparison protocol: all tools at 95% confidence, defaults elsewhere
+
+causalpy:
+  version: "0.8.0"
+  dependencies:
+    pymc: "5.28.1"       # pymc-devs/pymc (PyPI)
+    arviz: "0.23.4"      # arviz-devs/arviz (PyPI); CausalPy requires >=0.14.0
+    arviz_stats: "1.0.0" # arviz-devs/arviz-stats (PyPI) — transitive dependency, separate package
+  method: "Bayesian Synthetic Control (Dirichlet)"
+  posteriors:
+    - y_hat   # posterior predictive — more generous uncertainty quantification
+  sampler:
+    chains: 4
+    draws: 1000
+    warmup: 1000
+    target_accept: 0.80
+  inference:
+    hdi_prob: 0.95  # override ArviZ default of 0.94
+  convergence:
+    rhat_pass: 1.01
+    rhat_rerun: 1.05
+    ess_bulk_min: 400
+    ess_tail_min: 200
+  retry:
+    max_retries: 2
+    rerun_draws_multiplier: 2
+    rerun_target_accept: 0.99
+
+google_mm:
+  version: "matched_markets (Python, git)"
+  commit: "5e3cd95"      # google/matched_markets (GitHub)
+  method: "Time-Based Regression (TBR)"
+  confidence_level: 0.95  # override 0.90 default
+  tails: 2
+  use_cooldown: false
+
+geolift:
+  version: "2.7.5"
+  commit: "4d2afd4"      # facebookincubator/GeoLift (GitHub)
+  dependencies:
+    augsynth: "65c5a6f"   # ebenmichael/augsynth (GitHub)
+  method: "Augmented SC (Ridge + conformal)"
+  alpha: 0.05  # -> 95% confidence
+  call_via: "subprocess"
+  script: "src/R/run_geolift.R"
+
+causalimpact:
+  version: "1.4.1"           # CRAN (originally pinned to 1.2.4, archived; 1.4.1 used for all results)
+  method: "BSTS (local level + spike-and-slab regression)"
+  alpha: 0.05                # 95% credible intervals
+  model_args:
+    nseasons: 7              # weekly seasonality (matches DGP dow_profile)
+    season_duration: 1       # 1 day per season (daily data); hardcoded in R wrapper
+    dynamic.regression: false # stable geo relationships; R parameter uses dot notation; package default (FALSE)
+    niter: 2000              # MCMC iterations (total, including 10% burn-in → 1800 effective draws)
+  call_via: "subprocess"
+  script: "src/R/run_causalimpact.R"

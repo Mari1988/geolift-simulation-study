@@ -1,0 +1,8 @@
+FC = /opt/homebrew/bin/gfortran
+F77 = /opt/homebrew/bin/gfortran
+FLIBS = -L/opt/homebrew/lib/gcc/current -lgfortran -lquadmath -lm
+CPPFLAGS += -I/opt/homebrew/opt/gettext/include
+LDFLAGS += -L/opt/homebrew/opt/gettext/lib
+# MCPanel (RcppEigen) hits a real Eigen/C++20 incompatibility with newer Clang;
+# fall back C++20 requests to C++17, which Eigen still supports cleanly.
+CXX20STD = -std=gnu++17

@@ -38,6 +38,15 @@ Python venv: `.venv/bin/python`
 .venv/bin/python -m pytest tests/test_compute_att.py   # single file
 ```
 
+Tests import from `src/` via the editable install (`pip install -e .`). The `src/` package root requires that install to be in place before tests run.
+
+### Running individual analysis scripts
+
+```bash
+.venv/bin/python analysis/compute_metrics.py
+.venv/bin/python analysis/smoke_test.py
+```
+
 ## Architecture
 
 **Pipeline stages** (each is independent — make targets don't auto-chain):
@@ -50,6 +59,26 @@ Python venv: `.venv/bin/python`
 
 4. `analysis/generate_tables.py`, `analysis/plot_forest.py`, `analysis/plot_ci_gallery.py` → `results/aggregated/` tables and `figures/` PNGs.
 
+**Data flow**:
+
+```
+src/R/generate_panels.R
+  → panels/{scenario}/{effect}/panel_*.parquet   (canonical long format: geo, date, Y, Y_counterfactual)
+  → panels/{scenario}/metadata.json
+
+src/python/run_tools.py                           (pipeline orchestrator)
+  ├── data_converters.py  → per-tool format
+  ├── run_causalpy.py     → CausalPy (Python, PyMC)
+  ├── run_google_mm.py    → Google Matched Markets (Python)
+  ├── R subprocess        → src/R/run_geolift.R
+  └── R subprocess        → src/R/run_causalimpact.R
+  → results/raw/results.jsonl                     (one JSON record per tool × iteration)
+
+analysis/compute_metrics.py  → results/aggregated/metrics.csv
+analysis/generate_tables.py  → results/aggregated/table_A*.{md,csv}
+analysis/plot_*.py           → figures/*.png
+```
+
 **Python tool wrappers** (in `src/python/`):
 - `run_causalpy.py` — Bayesian SC via PyMC; has convergence gating (rhat/ESS) and retry logic
 - `run_google_mm.py` — TBR via `matched_markets`; deterministic (OLS)
@@ -60,7 +89,19 @@ Python venv: `.venv/bin/python`
 - `src/R/run_geolift.R` — Augmented SC + block conformal inference
 - `src/R/run_causalimpact.R` — BSTS
 
-**Tool config**: `config/tools.yaml` — all tools equalized at 95% confidence; hyperparameters documented there.
+**Key design decisions**:
+
+**Canonical format**: panels use integer `date` (1-indexed days), string `geo`, observed `Y`, and DGP counterfactual `Y_counterfactual`. Each tool wrapper in `data_converters.py` converts from this to its required format (wide DataFrame for CausalPy, datetime-indexed with group/period columns for Google MM, location/date/Y strings for GeoLift).
+
+**R tools run as subprocesses**: GeoLift and CausalImpact are R packages with no Python bindings. `run_tools.py` launches them via `subprocess` (calling `Rscript src/R/run_geolift.R` / `run_causalimpact.R`), passing panel data through a temp parquet file and reading JSON results back from stdout.
+
+**Crash recovery**: `run_tools.py` appends to `results/raw/results.jsonl` and checks completed `(scenario, effect_label, iteration, tool_label)` tuples on startup, so interrupted runs resume without re-running completed work.
+
+**CausalPy convergence gating**: `run_causalpy.py` checks rhat ≤ 1.01 and ESS ≥ 400/200 (bulk/tail), retrying with doubled draws and higher `target_accept` (up to `max_retries=2`) before marking a result as non-converged.
+
+**Tool config**: `config/tools.yaml` — all tools equalized at 95% confidence; hyperparameters documented there. Single source of truth for tool versions, hyperparameters, and inference settings.
+
+**R environment**: R packages are managed by `renv` — `renv.lock` pins exact versions. Run `Rscript -e "renv::restore()"` (or `make env`) to reproduce the exact R environment. GeoLift and augsynth are installed from specific GitHub commits (see `config/tools.yaml`).
 
 ## Data correctness rules
 
@@ -77,3 +118,16 @@ Any change to metric computation must be validated by running `make eval` agains
 - `results/aggregated/metrics.csv` — per-cell aggregated stats. Committed.
 - `panels/` — 453 MB, not committed; regenerate with `make panels`.
 - `results/golden/metrics.csv` — golden reference for regression detection; capture with `make eval-capture`.
+
+## Pedagogical notebook
+
+`notebooks/tool_comparison_walkthrough.ipynb` draws one sample panel per scenario
+(via a Python-ported DGP in `src/python/panel_dgp.py`, not the R pipeline) and runs
+each geo-experiment method on it, for building intuition about how each method
+behaves per scenario — as opposed to the main study's 1,000-iteration runs.
+
+**See `geo_model_selection.MD` for full implementation details** (per-method
+wrapper/config references, the common result schema, and a checklist for adding
+new methods like difference-in-differences, panel fixed effects, or synthetic
+difference-in-differences). Consult and update that file whenever working on this
+notebook or adding a new geo-experiment method to it.
